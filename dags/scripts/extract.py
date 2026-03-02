@@ -104,6 +104,11 @@ def extract_run():
 
     if len(tables) == 0 or len(pd.read_sql("SELECT 1 FROM raw_fx_rates LIMIT 1", conn)) == 0:
         df = history_fx(base_url, currencies)
+
+        # Validation
+        assert(df['EUR'] == 1), f"EUR is the base_currency should be = 1, got {df['EUR']}"
+
+
         records = df[["date", "EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]].values.tolist()
 
         cursor.executemany(

@@ -26,6 +26,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Run tests
+        run: |
+          pytest tests/ -v --tb=short
+
       - name: Lint with ruff
         run: |
           ruff check .
@@ -35,6 +39,3 @@ jobs:
         run: |
           sqlfluff lint sql/ --dialect sqlite
 
-      - name: Run tests
-        run: |
-          pytest tests/ -v --tb=short

@@ -49,6 +49,10 @@ def transfrom():
             logging.error(f"{datetime.today().strftime('%Y-%m-%d')} error: {e}")
 
         df_cross_pairs = pd.DataFrame(cross_pairs)
+
+        # Validation    
+        assert(float(df_cross_pairs.iloc[-1]['rate']) > 0, f"Rate should always be positif, got {float(df_cross_pairs.iloc[-1]['rate'])}" )
+
         records = df_cross_pairs[
             ["date", "base_currency", "target_currency", "rate"]
         ].values.tolist()
@@ -106,6 +110,10 @@ def transfrom():
 
         # Append new data
         df_cross_pairs = pd.DataFrame(cross_pairs)
+
+        # Validation    
+        assert(float(df_cross_pairs.iloc[-1]['rate']) > 0, f"Rate should always be positif, got {float(df_cross_pairs.iloc[-1]['rate'])}" )
+
         records = df_cross_pairs[
             ["date", "base_currency", "target_currency", "rate"]
         ].values.tolist()
