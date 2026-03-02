@@ -17,6 +17,7 @@ mock_api_response = {
     },
 }
 
+currencies = ["EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]
 base_url = "https://v6.exchangerate-api.com/v6"
 
 
@@ -27,7 +28,7 @@ def test_latest_fx_returns_one_row(mock_get: MagicMock) -> None:
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
-    df = latest_fx(base_url)
+    df = latest_fx(base_url, currencies)
 
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 1
@@ -40,7 +41,7 @@ def test_latest_fx_rates_positive(mock_get: MagicMock) -> None:
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
-    df = latest_fx(base_url)
+    df = latest_fx(base_url, currencies)
 
     for currency in ["NOK", "EUR", "SEK", "PLN", "RON", "DKK", "CZK"]:
         assert df[currency].iloc[0] > 0
