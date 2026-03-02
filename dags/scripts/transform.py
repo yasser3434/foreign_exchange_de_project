@@ -1,10 +1,11 @@
-import os
 import logging
-import pandas as pd
+import os
 import sqlite3
-from dotenv import load_dotenv
 from datetime import datetime
 from itertools import permutations
+
+import pandas as pd
+from dotenv import load_dotenv
 from scripts.ddl import load_dim_date
 
 load_dotenv()
@@ -28,10 +29,7 @@ def transfrom():
     )
 
     # IF: TABLE fact_fx_rates DOES NOT EXIST OR HAS 0 ROWS TRANSFORM ALL DATA
-    if (
-        len(tables) == 0
-        or len(pd.read_sql("SELECT 1 FROM fact_fx_rates LIMIT 1", conn)) == 0
-    ):
+    if len(tables) == 0 or len(pd.read_sql("SELECT 1 FROM fact_fx_rates LIMIT 1", conn)) == 0:
         df = pd.read_sql(""" SELECT * FROM raw_fx_rates """, conn)
         cross_pairs = []
 
@@ -64,9 +62,7 @@ def transfrom():
         )
         conn.commit()
 
-        logging.info(
-            f"Transformed data and added {len(pd.DataFrame(cross_pairs))} rows!"
-        )
+        logging.info(f"Transformed data and added {len(pd.DataFrame(cross_pairs))} rows!")
 
     else:
         df = pd.read_sql(

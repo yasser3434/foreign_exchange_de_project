@@ -1,10 +1,11 @@
-import os
 import logging
-import requests
+import os
 import sqlite3
-import pandas as pd
-from dotenv import load_dotenv
 from datetime import datetime, timedelta
+
+import pandas as pd
+import requests
+from dotenv import load_dotenv
 
 load_dotenv()
 api_key = os.getenv("api_key")
@@ -101,14 +102,9 @@ def extract_run():
         conn,
     )
 
-    if (
-        len(tables) == 0
-        or len(pd.read_sql("SELECT 1 FROM raw_fx_rates LIMIT 1", conn)) == 0
-    ):
+    if len(tables) == 0 or len(pd.read_sql("SELECT 1 FROM raw_fx_rates LIMIT 1", conn)) == 0:
         df = history_fx(base_url, currencies)
-        records = df[
-            ["date", "EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]
-        ].values.tolist()
+        records = df[["date", "EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]].values.tolist()
 
         cursor.executemany(
             """
@@ -127,9 +123,7 @@ def extract_run():
         # KEEP IT TO SHOW DUPLICATES !!
         # df.to_sql("raw_fx_rates", conn, if_exists="append", index=False)
 
-        records = df[
-            ["date", "EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]
-        ].values.tolist()
+        records = df[["date", "EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]].values.tolist()
         cursor.executemany(
             """
             INSERT OR IGNORE INTO raw_fx_rates(date, EUR, NOK, SEK, PLN, RON, DKK, CZK)

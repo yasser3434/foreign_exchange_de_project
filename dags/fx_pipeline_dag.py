@@ -1,11 +1,10 @@
-from airflow import DAG
-from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime, timedelta
 
+from airflow import DAG
+from airflow.providers.standard.operators.python import PythonOperator
+from scripts.ddl import load_dim_run
 from scripts.extract import extract_run
 from scripts.transform import transfrom
-from scripts.ddl import load_dim_run
-
 
 default_args = {
     "owner": "airflow",

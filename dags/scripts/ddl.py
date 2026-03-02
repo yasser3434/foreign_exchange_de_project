@@ -1,11 +1,12 @@
+import logging
 import os
 import sqlite3
-import logging
-import requests
-import pandas as pd
-from pathlib import Path
-from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from pathlib import Path
+
+import pandas as pd
+import requests
+from dotenv import load_dotenv
 
 load_dotenv()
 api_key = os.getenv("api_key")
