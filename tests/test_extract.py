@@ -4,7 +4,6 @@ import pandas as pd
 
 from dags.scripts.extract import latest_fx
 
-
 mock_api_response = {
     "result": "success",
     "conversion_rates": {

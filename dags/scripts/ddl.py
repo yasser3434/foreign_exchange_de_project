@@ -1,11 +1,12 @@
+import logging
 import os
 import sqlite3
-import logging
-import requests
-import pandas as pd
-from pathlib import Path
-from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from pathlib import Path
+
+import pandas as pd
+import requests
+from dotenv import load_dotenv
 
 load_dotenv()
 api_key = os.getenv("api_key")
@@ -18,7 +19,6 @@ currencies = ["NOK", "EUR", "SEK", "PLN", "RON", "DKK", "CZK"]
 
 
 def load_dim_curr():
-
     # CREATE DIMENSION TABLES IF NOT EXITSTS
     db_path = "/opt/airflow/data/fx_warehouse.sqlite"
     conn = sqlite3.connect(db_path)
@@ -56,7 +56,6 @@ def load_dim_curr():
 
 
 def load_dim_date(start_date=datetime(2026, 1, 1)):
-
     # CREATE DIMENSION TABLES IF NOT EXITSTS
     db_path = "/opt/airflow/data/fx_warehouse.sqlite"
     conn = sqlite3.connect(db_path)
@@ -101,7 +100,15 @@ def load_dim_run():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    if len(pd.read_sql(""" SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'dim_currencies' """, conn)) == 0 :        
+    if (
+        len(
+            pd.read_sql(
+                """ SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'dim_currencies' """,
+                conn,
+            )
+        )
+        == 0
+    ):
         folder = Path(ddl_path)
         if not folder.exists():
             raise FileNotFoundError(f"Folder {ddl_path} not found")
@@ -116,7 +123,6 @@ def load_dim_run():
                 logging.info(f"Executed {file} successfully")
         except Exception:
             logging.error(f"Error with {file}")
-   
+
         load_dim_curr()
         load_dim_date()
-
