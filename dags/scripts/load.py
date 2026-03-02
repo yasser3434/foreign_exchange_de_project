@@ -1,4 +1,3 @@
-
 import os
 import sqlite3
 import logging
@@ -33,43 +32,45 @@ try:
         # print(sql_file)
         cursor.execute(sql_file)
         logging.info(f"Executed {file} successfully")
-except Exception as e:
+except Exception:
     logging.error(f"Error with {file}")
-
-
 
 
 # =================================== Load - Dim currencies
 
 base_url = "https://v6.exchangerate-api.com/v6"
-currencies = ['NOK', 'EUR', 'SEK', 'PLN', 'RON', 'DKK', 'CZK']
+currencies = ["NOK", "EUR", "SEK", "PLN", "RON", "DKK", "CZK"]
+
 
 def load_dim_curr():
     dim = []
 
     try:
-        logging.info(f"Loading currencies dim table...")    
+        logging.info("Loading currencies dim table...")
         for currency in currencies:
             response = requests.get(f"{base_url}/{api_key}/enriched/EUR/{currency}")
             response.raise_for_status()
 
             data = response.json()
 
-            dim.append({
-                "currency": data["target_code"]
-                , "locale" : data["target_data"]["locale"]
-                , "two_letter_code" : data["target_data"]["two_letter_code"]
-                , "currency_name" : data["target_data"]["currency_name"]
-                , "currency_name_short" : data["target_data"]["currency_name_short"]
-            })
+            dim.append(
+                {
+                    "currency": data["target_code"],
+                    "locale": data["target_data"]["locale"],
+                    "two_letter_code": data["target_data"]["two_letter_code"],
+                    "currency_name": data["target_data"]["currency_name"],
+                    "currency_name_short": data["target_data"]["currency_name_short"],
+                }
+            )
         df_dim = pd.DataFrame(dim)
         df_dim.to_sql("dim_currencies", conn, if_exists="replace", index=False)
 
+    except Exception:
+        logging.error("Error loading cuurrencies dim table")
 
-    except Exception as e:
-        logging.error(f"Error loading cuurrencies dim table")
 
 # =================================== Load - Dim date
+
 
 def load_dim_date():
     date_records = []
@@ -77,22 +78,27 @@ def load_dim_date():
     end = datetime.today()
 
     while current < end:
-        fiscal_year = current.year + 1 if current.month >= 10 else current.year 
-        date_records.append((
-            current.strftime("%Y-%m-%d")
-            , current.year
-            , fiscal_year
-            , current.month
-            , current.day
-            , (current.month - 1) // 3 + 1
-        ))
+        fiscal_year = current.year + 1 if current.month >= 10 else current.year
+        date_records.append(
+            (
+                current.strftime("%Y-%m-%d"),
+                current.year,
+                fiscal_year,
+                current.month,
+                current.day,
+                (current.month - 1) // 3 + 1,
+            )
+        )
 
         current += timedelta(days=1)
 
-    cursor.executemany("""
+    cursor.executemany(
+        """
         INSERT INTO dim_date(date, year, fiscal_year, month, day, quarter)
         VALUES(?, ?, ?, ?, ?, ?)
-    """, date_records)
+    """,
+        date_records,
+    )
     conn.commit()
 
 
