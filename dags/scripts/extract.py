@@ -1,6 +1,7 @@
 import os
 import logging
 import requests
+import sqlite3
 import pandas as pd
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -8,16 +9,16 @@ from datetime import datetime, timedelta
 load_dotenv()
 api_key = os.getenv("api_key")
 
-base_url = "https://v6.exchangerate-api.com/v6"
-currencies = ["NOK", "EUR", "SEK", "PLN", "RON", "DKK", "CZK"]
-
-
-def latest_fx(base_url, currency="EUR") -> pd.DataFrame:
+def latest_fx(base_url, currencies, base_currency="EUR") -> pd.DataFrame:
     """
     Get daily data
     """
+
+    base_url = "https://v6.exchangerate-api.com/v6"
+    currencies = ["EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]
+
     # Get data
-    url = f"{base_url}/{api_key}/latest/{currency}"
+    url = f"{base_url}/{api_key}/latest/{base_currency}"
     response = requests.get(url)
     response.raise_for_status()
 
@@ -48,11 +49,12 @@ def latest_fx(base_url, currency="EUR") -> pd.DataFrame:
 
 
 def history_fx(
-    base_url, start_date=datetime(2026, 1, 1), currency="EUR"
+    base_url, currencies, start_date=datetime(2026, 1, 1), base_currency="EUR"
 ) -> pd.DataFrame:
     """
     Get history data from start_date to end
     """
+
     records = []
     end_date = datetime.today()
     current_date = start_date
@@ -62,7 +64,7 @@ def history_fx(
         month = current_date.month
         day = current_date.day
 
-        url = f"{base_url}/{api_key}/history/{currency}/{year}/{month}/{day}"
+        url = f"{base_url}/{api_key}/history/{base_currency}/{year}/{month}/{day}"
         response = requests.get(url)
         data = response.json()
 
@@ -82,5 +84,42 @@ def history_fx(
     return pd.DataFrame(records)
 
 
-if __name__ == "main":
-    latest_fx(base_url)
+def extract_run():
+    base_url = "https://v6.exchangerate-api.com/v6"
+    currencies = ["EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]
+
+    db_path = "/opt/airflow/data//fx_warehouse.sqlite"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    tables = pd.read_sql("""
+        SELECT name FROM sqlite_master 
+        WHERE type = 'table' AND name = 'raw_fx_rates'
+    """, conn)
+
+    if len(tables) == 0 or len(pd.read_sql("SELECT 1 FROM raw_fx_rates LIMIT 1", conn)) == 0:
+        df = history_fx(base_url, currencies)
+        records = df[["date", "EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]].values.tolist()
+        
+        cursor.executemany("""
+            INSERT OR IGNORE INTO raw_fx_rates(date, EUR, NOK, SEK, PLN, RON, DKK, CZK)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+        """, records)
+        conn.commit()
+
+        logging.info(f"Extracted {len(df)} rows!")
+
+    else:
+        df = latest_fx(base_url, currencies)
+
+        # KEEP IT TO SHOW DUPLICATES !!
+        # df.to_sql("raw_fx_rates", conn, if_exists="append", index=False)
+
+        records = df[["date", "EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]].values.tolist()
+        cursor.executemany("""
+            INSERT OR IGNORE INTO raw_fx_rates(date, EUR, NOK, SEK, PLN, RON, DKK, CZK)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+        """, records)
+        conn.commit()
+
+        logging.info(f"Extracted {len(records)} rows!")

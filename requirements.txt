@@ -4,3 +4,4 @@ pandas
 ruff
 pytest
 pre-commit
+apache-airflow

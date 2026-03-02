@@ -6,34 +6,9 @@ import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-from dags.scripts.transform import tranform_records
 
 load_dotenv()
 api_key = os.getenv("api_key")
-
-# =================================== CREATE DIMENSION TABLES IF NOT EXITSTS
-
-db_path = "../../data/fx_warehouse.sqlite"
-ddl_path = "../sql/ddl"
-
-conn = sqlite3.connect(db_path)
-cursor = conn.cursor()
-
-
-folder = Path(ddl_path)
-if not folder.exists():
-    raise FileNotFoundError(f"Folder {ddl_path} not found")
-
-sql_files = folder.glob("*.sql")
-
-try:
-    for file in sql_files:
-        sql_file = file.read_text()
-        # print(sql_file)
-        cursor.execute(sql_file)
-        logging.info(f"Executed {file} successfully")
-except Exception:
-    logging.error(f"Error with {file}")
 
 
 # =================================== Load - Dim currencies
@@ -43,6 +18,12 @@ currencies = ["NOK", "EUR", "SEK", "PLN", "RON", "DKK", "CZK"]
 
 
 def load_dim_curr():
+
+    # CREATE DIMENSION TABLES IF NOT EXITSTS
+    db_path = "/opt/airflow/data/fx_warehouse.sqlite"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
     dim = []
 
     try:
@@ -65,6 +46,8 @@ def load_dim_curr():
         df_dim = pd.DataFrame(dim)
         df_dim.to_sql("dim_currencies", conn, if_exists="replace", index=False)
 
+        logging.info(f"Updated currencies dim : {len(df_dim)} currencies!")
+
     except Exception:
         logging.error("Error loading cuurrencies dim table")
 
@@ -72,12 +55,18 @@ def load_dim_curr():
 # =================================== Load - Dim date
 
 
-def load_dim_date():
+def load_dim_date(start_date=datetime(2026, 1, 1)):
+
+    # CREATE DIMENSION TABLES IF NOT EXITSTS
+    db_path = "/opt/airflow/data/fx_warehouse.sqlite"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
     date_records = []
-    current = datetime(2026, 1, 1)
+    current = start_date
     end = datetime.today()
 
-    while current < end:
+    while current <= end:
         fiscal_year = current.year + 1 if current.month >= 10 else current.year
         date_records.append(
             (
@@ -94,18 +83,40 @@ def load_dim_date():
 
     cursor.executemany(
         """
-        INSERT INTO dim_date(date, year, fiscal_year, month, day, quarter)
+        INSERT OR IGNORE INTO dim_date(date, year, fiscal_year, month, day, quarter)
         VALUES(?, ?, ?, ?, ?, ?)
     """,
         date_records,
     )
     conn.commit()
 
+    logging.info(f"Updated date dim : {len(date_records)} dates!")
 
-# =================================== Load - fx_rates
 
-if __name__ == "main":
-    load_dim_curr()
-    load_dim_date()
-    # =latest by default, run history once
-    tranform_records().to_sql("fact_fx_rates", conn, if_exists="replace", index=False)
+def load_dim_run():
+    # CREATE DIMENSION TABLES IF NOT EXITSTS
+    db_path = "/opt/airflow/data/fx_warehouse.sqlite"
+    ddl_path = "/opt/airflow/sql/ddl"
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    if len(pd.read_sql(""" SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'dim_currencies' """, conn)) == 0 :        
+        folder = Path(ddl_path)
+        if not folder.exists():
+            raise FileNotFoundError(f"Folder {ddl_path} not found")
+
+        sql_files = folder.glob("*.sql")
+
+        try:
+            for file in sql_files:
+                sql_file = file.read_text()
+                # print(sql_file)
+                cursor.execute(sql_file)
+                logging.info(f"Executed {file} successfully")
+        except Exception:
+            logging.error(f"Error with {file}")
+   
+        load_dim_curr()
+        load_dim_date()
+
