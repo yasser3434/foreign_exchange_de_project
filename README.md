@@ -39,6 +39,12 @@ NOK, EUR, SEK, PLN, RON, DKK, CZK — all 42 cross-pairs daily.
 
 ```
 fx_pipeline/
+├── azure_functions/
+│   ├── function_app.py                 # Azure Functions (extract + transform)
+│   ├── requirements.txt                # Function dependencies
+│   ├── host.json                       # Azure Functions config
+│   └── local.settings.json             # Local secrets 
+|
 ├── dags/
 │   ├── fx_pipeline_dag.py           
 │   └── scripts/
@@ -287,15 +293,68 @@ env_file: - ${ENV_FILE_PATH:-.env}
 ```
 This takes automatically your variables
 
-### Azure Deployment Proposal
 
-For production, this pipeline would run on Azure using:
+## Setup — Cloud Deployment (Azure)
 
-- **Azure Data Factory** with Managed Airflow for orchestration
-- **Azure SQL Database** or **Synapse Analytics** replacing SQLite as the warehouse
-- **Azure Key Vault** for API key management (replacing `.env`)
-- **Azure Blob Storage** for raw data landing zone
-- **Azure Monitor** for logging and alerting
+### Step 1: Create Resource Group
+
+In Azure Portal, create a resource group `<my_resource_group>`
+
+### Step 2: Create Azure SQL Database
+
+1. Create a SQL Server with SQL authentication
+2. Create a database named `<my_database>`
+3. Enable public access, add your IP address and allow Azure services to connect
+
+### Step 3: Create tables
+Run the DDL scripts against Azure SQL. Refer to main_azure notebook
+
+
+### Step 4: Load dimensions (once)
+
+Run the adapted `load_dim_tables`. Uses `MERGE ... WHEN NOT MATCHED` instead of `INSERT OR IGNORE` for idempotent inserts.
+
+### Step 5: Create Azure Function App
+
+
+1. Deploy via VS Code Azure Functions extension:
+- install azure function
+- Init the env folder : func init --python --model V2
+
+2. Set environment variables in the Function App:
+
+| Name | Value |
+|------|-------|
+| API_KEY | your_api_key |
+| AZURE_SQL_SERVER | your-server.database.windows.net |
+| AZURE_SQL_DATABASE | fx_warehouse |
+| AZURE_SQL_USERNAME | fxadmin |
+| AZURE_SQL_PASSWORD | your_password |
+| ENABLE_ORYX_BUILD | true |
+| SCM_DO_BUILD_DURING_DEPLOYMENT | true |
+
+
+### Step 7: Test the functions
+
+```bash
+curl -X POST "https://<function-app-name>.azurewebsites.net/api/extract?code=<key>"
+curl -X POST "https://<function-app-name>.azurewebsites.net/api/transform?code=<key>"
+```
+
+### Step 8: Create Azure Data Factory
+1. Create a Data Factory resource 
+2. Create a pipeline `fx_daily_pipeline`
+4. Add two <Web> activities chained together : Extract and Transform
+
+| Activity | URL | Method |
+|----------|-----|--------|
+| Extract | https://<function-app-name>.azurewebsites.net/api/extract?code=<key> | POST |
+| Transform | https://<function-app-name>.azurewebsites.net/api/transform?code=<key> | POST |
+
+5. Chain: Extract and Transform (green arrow)
+6. Add a Schedule trigger : daily at 4:15 PM
+7. Publish all
+
 
 
 ### Check row counts

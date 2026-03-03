@@ -5,5 +5,5 @@
 azure-functions
 pandas
 requests
-pyodbc
+pymssql
 python-dotenv
