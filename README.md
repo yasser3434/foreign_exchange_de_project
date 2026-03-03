@@ -254,11 +254,9 @@ All configured in `pyproject.toml` — one file for all tool settings.
 
 ### Quality gates
 
-| Layer | When | Where | Purpose |
-|-------|------|-------|---------|
-| **pyproject.toml** | Manual runs | Local | Configure rules |
-| **pre-commit** | On `git commit` | Local | Catch issues before they enter Git |
-| **GitHub Actions CI** | On push / PR | GitHub | Safety net, catches anything pre-commit missed |
+ **pyproject.toml** 
+ **pre-commit** 
+ **GitHub Actions CI**
 
 Pre-commit auto-fixes safe issues (import sorting, formatting). Unsafe fixes (renaming variables, removing code) require manual intervention.
 
@@ -324,16 +322,6 @@ Run the adapted `load_dim_tables`. Uses `MERGE ... WHEN NOT MATCHED` instead of 
 
 2. Set environment variables in the Function App:
 
-| Name | Value |
-|------|-------|
-| API_KEY | your_api_key |
-| AZURE_SQL_SERVER | your-server.database.windows.net |
-| AZURE_SQL_DATABASE | fx_warehouse |
-| AZURE_SQL_USERNAME | fxadmin |
-| AZURE_SQL_PASSWORD | your_password |
-| ENABLE_ORYX_BUILD | true |
-| SCM_DO_BUILD_DURING_DEPLOYMENT | true |
-
 
 ### Step 6: Test the functions
 
@@ -346,12 +334,6 @@ curl -X POST "https://<function-app-name>.azurewebsites.net/api/transform?code=<
 1. Create a Data Factory resource 
 2. Create a pipeline `fx_daily_pipeline`
 4. Add two <Web> activities chained together : Extract and Transform
-
-| Activity | URL | Method |
-|----------|-----|--------|
-| Extract | https://<function-app-name>.azurewebsites.net/api/extract?code=<key> | POST |
-| Transform | https://<function-app-name>.azurewebsites.net/api/transform?code=<key> | POST |
-
 5. Chain: Extract and Transform (green arrow)
 6. Add a Schedule trigger : daily at 4:15 PM
 7. Publish all
