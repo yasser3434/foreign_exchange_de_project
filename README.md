@@ -40,11 +40,11 @@ NOK, EUR, SEK, PLN, RON, DKK, CZK — all 42 cross-pairs daily.
 ```
 fx_pipeline/
 ├── dags/
-│   ├── fx_pipeline_dag.py           # Airflow DAG definition
+│   ├── fx_pipeline_dag.py           
 │   └── scripts/
-│       ├── extract.py               # API extraction (latest + history)
-│       ├── transform.py             # Cross-pair computation + fact loading
-│       └── load_dim_tables.py       # Dimension tables setup (run once)
+│       ├── extract.py               
+│       ├── transform.py             
+│       └── ddl.py                   
 ├── sql/
 │   ├── ddl/
 │   │   ├── raw_fx_rates.sql         # Raw table DDL
@@ -53,23 +53,22 @@ fx_pipeline/
 │   │   └── fact_fx_rates.sql        # Fact table DDL
 │   └── queries/
 │       ├── ytd_calculations.sql     # Year-to-Date metrics
-│       └── example_queries.sql      # Sample queries
+│       
 ├── tests/
 │   ├── test_extract.py
-│   ├── test_transform.py
-│   └── test_load.py
-├── data/                            # SQLite database (gitignored)
-├── logs/                            # Airflow logs
-├── plugins/                         # Airflow plugins
-├── config/                          # Airflow config
+
+├── data/                            
+├── logs/                            
+├── plugins/                         
+├── config/                          
 ├── notebooks/                       # Jupyter notebooks for exploration
-├── docker-compose.yaml              # Airflow infrastructure
+├── docker-compose.yaml              
 ├── .env                             # Secrets (gitignored)
 ├── .env.example                     # Template for .env
 ├── .gitignore
 ├── .pre-commit-config.yaml          # Pre-commit hooks
-├── .github/workflows/ci.yml         # GitHub Actions CI
-├── pyproject.toml                   # Ruff, pytest, SQLFluff config
+├── .github/workflows/ci.yml         # Github actions CI
+├── pyproject.toml                   # Ruff(lint and format), pytest, SQLFluff config
 ├── requirements.txt
 └── README.md
 ```
@@ -318,23 +317,3 @@ FROM fact_fx_rates
 GROUP BY date, base_currency, target_currency
 HAVING COUNT(*) > 1;
 ```
-
-This should return **zero rows**.
-
-### Verify inverse pair consistency
-
-```sql
-SELECT
-    a.date,
-    a.base_currency,
-    a.target_currency,
-    ROUND(a.rate * b.rate, 4) AS product
-FROM fact_fx_rates a
-JOIN fact_fx_rates b
-    ON a.date = b.date
-    AND a.base_currency = b.target_currency
-    AND a.target_currency = b.base_currency
-WHERE ABS(a.rate * b.rate - 1.0) > 0.001;
-```
-
-This should return **zero rows** (every pair × its inverse ≈ 1.0).
