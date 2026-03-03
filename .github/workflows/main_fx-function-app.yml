@@ -35,7 +35,9 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          cd fx-funcyion-app
+          pip install -r requirements.txt
 
       # Optional: Add step to run tests here
 
@@ -71,5 +73,5 @@ jobs:
         with:
           app-name: 'fx-function-app'
           slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          package: './fx-function-app'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_678B524A7DBA4DE28C32B5F14412D976 }}
