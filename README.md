@@ -117,11 +117,7 @@ The derivation formula: `rate(A → B) = EUR_rate(B) / EUR_rate(A)`. Since both 
 
 The warehouse follows a star schema pattern, making it easy to join FX data with any other fact table in the warehouse:
 
-```
-dim_date  ←──  fact_fx_rates  ──→  dim_currency (base)
-                     │
-                     └──────────→  raw_fx_rates
-```
+![alt text](image-1.png)
 
 ### Why long format (not wide)?
 
