@@ -71,6 +71,8 @@ jobs:
         id: deploy-to-function
         with:
           app-name: 'fx-function-app'
-          slot-name: 'Production'
+          # slot-name: 'Production'
           package: '.'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_678B524A7DBA4DE28C32B5F14412D976 }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
