@@ -8,32 +8,7 @@ NOK, EUR, SEK, PLN, RON, DKK, CZK — all 42 cross-pairs daily.
 
 ## Architecture
 
-```
-                    ┌──────────────┐
-                    │ ExchangeRate │
-                    │     API      │
-                    └──────┬───────┘
-                           │
-              ┌────────────▼────────────┐
-              │     Task 1: Extract     │
-              │  latest_fx() / history  │
-              │  Saves to raw_fx_rates  │
-              └────────────┬────────────┘
-                           │
-              ┌────────────▼────────────┐
-              │   Task 2: Transform     │
-              │  Compute 42 cross-pairs │
-              │  Load into fact table   │
-              └────────────┬────────────┘
-                           │
-              ┌────────────▼────────────┐
-              │    SQLite Warehouse     │
-              │  dim_currency           │
-              │  dim_date               │
-              │  raw_fx_rates           │
-              │  fact_fx_rates          │
-              └─────────────────────────┘
-```
+![alt text](image.png)
 
 ## Project Structure
 
