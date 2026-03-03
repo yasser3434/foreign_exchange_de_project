@@ -106,8 +106,7 @@ def extract_run():
         df = history_fx(base_url, currencies)
 
         # Validation
-        assert(df['EUR'] == 1), f"EUR is the base_currency should be = 1, got {df['EUR']}"
-
+        assert df["EUR"] == 1, f"EUR is the base_currency should be = 1, got {df['EUR']}"
 
         records = df[["date", "EUR", "NOK", "SEK", "PLN", "RON", "DKK", "CZK"]].values.tolist()
 

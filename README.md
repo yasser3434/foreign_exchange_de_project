@@ -4,7 +4,7 @@ A production-grade ETL pipeline that ingests daily FX rates for 7 European curre
 
 ## Currencies
 
-NOK, EUR, SEK, PLN, RON, DKK, CZK — all 42 directional cross-pairs computed daily.
+NOK, EUR, SEK, PLN, RON, DKK, CZK — all 42 cross-pairs daily.
 
 ## Architecture
 
@@ -88,7 +88,6 @@ Edit `.env` with your values:
 
 ```
 API_KEY=your_exchangerate_api_key
-FX_DB_PATH=/opt/airflow/data/fx_warehouse.sqlite
 AIRFLOW_UID=1000
 ```
 
@@ -98,21 +97,14 @@ To find your Airflow UID on Linux:
 echo $(id -u)
 ```
 
-### 2. Create required directories
 
-Airflow needs these folders to exist locally before starting. Docker-compose mounts them as volumes into the container:
-
-```bash
-mkdir -p dags logs plugins config data
-```
-
-### 3. Install Python dependencies (local development)
+### 2. Install Python dependencies (local development)
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Setup pre-commit hooks
+### 3. Setup pre-commit hooks
 
 Pre-commit runs Ruff (linter + formatter) and SQLFluff (SQL linter) automatically before every `git commit`. If checks fail, the commit is blocked until you fix the issues.
 
@@ -121,7 +113,7 @@ pip install pre-commit
 pre-commit install
 ```
 
-### 5. Start Airflow
+### 4. Start Airflow
 
 ```bash
 docker-compose up -d
@@ -129,25 +121,6 @@ docker-compose up -d
 
 Access the Airflow UI at `http://localhost:8080` (login: airflow / airflow).
 
-### 6. Run the one-time dimension setup
-
-This creates and populates `dim_currencies` and `dim_date`. Run once, never again:
-
-```bash
-docker-compose exec airflow-worker python /opt/airflow/dags/scripts/load_dim_tables.py
-```
-
-Or run locally if your `.env` has the correct local `FX_DB_PATH`:
-
-```bash
-python dags/scripts/load_dim_tables.py
-```
-
-### 7. Enable the DAG
-
-In the Airflow UI, toggle the `fx_pipeline` DAG on. It runs daily at 4:15 PM UTC.
-
-The first run detects an empty `raw_fx_rates` table and triggers a full backfill from January 1, 2025 using `history_fx()`. Subsequent runs use `latest_fx()` to fetch only today's rates.
 
 ## Data Source
 
@@ -155,7 +128,7 @@ The first run detects an empty `raw_fx_rates` table and triggers a full backfill
 
 We use EUR as the single base currency and derive all cross-pairs mathematically. This reduces API calls from 7 × 365 = 2,555 to just 365 per year (one call per day).
 
-The derivation formula: `rate(A → B) = EUR_rate(B) / EUR_rate(A)`. Since both rates share EUR as the base, EUR cancels out in the division.
+The derivation formula: `rate(A → B) = EUR_rate(B) / EUR_rate(A)`. Since both rates share EUR as the base.
 
 ## Schema Design
 
@@ -166,7 +139,7 @@ The warehouse follows a star schema pattern, making it easy to join FX data with
 ```
 dim_date  ←──  fact_fx_rates  ──→  dim_currency (base)
                      │
-                     └──────────→  dim_currency (target)
+                     └──────────→  raw_fx_rates
 ```
 
 ### Why long format (not wide)?
@@ -186,17 +159,16 @@ date       | NOK  | EUR | SEK | ...
 2025-06-15 | 1    | ... | ... |
 ```
 
-Reasons:
+Why :
 
 - **Easy joins**: Any table with a `currency` column can join directly with `JOIN fx ON t.currency = fx.base_currency AND t.date = fx.date`. Wide format requires CASE statements for every currency.
 - **Scalable**: Adding a new currency (e.g., GBP) is just new rows. No `ALTER TABLE`, no query changes.
-- **Standard practice**: This is how FX fact tables are built in production warehouses.
 
 ### Tables
 
-**dim_currency** — descriptive attributes for each currency (7 rows, loaded once)
+**dim_currency** — descriptive attributes for each currency
 
-**dim_date** — shared calendar dimension with year, fiscal_year, month, quarter. Pre-populated for the full date range. In a real warehouse, this dimension is shared across all fact tables.
+**dim_date** — shared calendar dimension with year, fiscal_year, month, quarter.
 
 **raw_fx_rates** — EUR-based rates as received from the API. One row per day. Has a PRIMARY KEY on `date` to prevent duplicates.
 
@@ -207,12 +179,12 @@ Reasons:
 All inserts use `INSERT OR IGNORE` combined with PRIMARY KEY constraints. This means:
 
 - Running the pipeline twice for the same date produces the same result
-- No duplicate rows, ever
+- No duplicate rows
 - Safe to re-run after failures
 
 **Important**: Do not use pandas `to_sql(if_exists="append")` on tables with primary keys — it uses plain `INSERT` and will crash on duplicates. Always use `cursor.executemany()` with `INSERT OR IGNORE`.
 
-Also note: `to_sql(if_exists="replace")` drops and recreates the table without constraints, destroying your PRIMARY KEY. Only use it for initial table creation, and add constraints after.
+Also note: `to_sql(if_exists="replace")` drops and recreates the table without constraints, destroying your PRIMARY KEY.
 
 ## YTD Calculations
 
@@ -221,7 +193,6 @@ Year-to-Date metrics are computed via SQL (see `sql/queries/ytd_calculations.sql
 - **YTD change %**: `((rate_today - rate_jan1) / rate_jan1) * 100`
 - **YTD average rate**: mean of all daily rates from Jan 1 to today
 - **YTD high / low**: max and min rate within the current year
-- **Trading days**: count of days with data this year
 
 ## Example Queries
 
@@ -230,26 +201,11 @@ Year-to-Date metrics are computed via SQL (see `sql/queries/ytd_calculations.sql
 ```sql
 SELECT rate
 FROM fact_fx_rates
-WHERE date = '2025-06-15'
+WHERE date = '2026-01-01'
   AND base_currency = 'NOK'
   AND target_currency = 'EUR';
 ```
 
-### Convert transaction amounts to EUR
-
-```sql
-SELECT
-    t.id,
-    t.date,
-    t.amount,
-    t.currency,
-    t.amount * fx.rate AS amount_in_eur
-FROM transactions t
-JOIN fact_fx_rates fx
-    ON t.currency = fx.base_currency
-    AND fx.target_currency = 'EUR'
-    AND t.date = fx.date;
-```
 
 ### Monthly average rate
 
@@ -260,7 +216,7 @@ SELECT
 FROM fact_fx_rates
 WHERE base_currency = 'EUR'
   AND target_currency = 'NOK'
-  AND strftime('%Y', date) = '2025'
+  AND strftime('%Y', date) = '2026'
 GROUP BY month
 ORDER BY month;
 ```
@@ -274,16 +230,17 @@ pytest tests/ -v
 Tests use mocked API responses and in-memory SQLite databases — no real API calls, no network dependency. They validate:
 
 - Extraction returns correct structure and handles API errors
-- Transformation produces 42 pairs with positive rates and correct inverse relationships
+- Transformation produces 1 row for raw_fx_rates rates are postive
 - Loading is idempotent (run twice, same result)
+- Assertions over the ETL, DDL table, extraction and transformation
 
 ## Code Quality
 
 ### Linting and formatting
 
 ```bash
-ruff check .         # lint Python
-ruff format .        # format Python
+ruff check .         # lint
+ruff format .        # format
 sqlfluff lint sql/   # lint SQL
 ```
 
@@ -303,15 +260,14 @@ Pre-commit auto-fixes safe issues (import sorting, formatting). Unsafe fixes (re
 
 ### Airflow DAG
 
-The `fx_pipeline` DAG runs two tasks daily at 4:15 PM UTC:
+The `fx_pipeline` DAG runs three tasks daily at 4:15 PM :
 
 ```
-extract_task  →  transform_task
+ddl_tables >> extract_task >>  transfrom_load_task
 ```
 
-- `catchup=False` — does not backfill missed days automatically (handled separately by `history_fx`)
-- `retries=1` with 5-minute delay
-- Functions accept `**kwargs` because Airflow's PythonOperator passes a context argument automatically
+- `catchup=False` — does not backfill
+- `retries=1` with 30-sec delay
 
 ### Docker
 
@@ -327,23 +283,10 @@ volumes:
   - ./plugins:/opt/airflow/plugins
 ```
 
-The `data/` volume mount creates a two-way sync: when the DAG writes to `/opt/airflow/data/fx_warehouse.sqlite` inside the container, it writes directly to `data/fx_warehouse.sqlite` on your local machine.
-
-### Debugging in Docker
-
-```bash
-# Check files inside container
-docker-compose exec airflow-worker ls -la /opt/airflow/data/
-
-# Open a shell inside the container
-docker-compose exec airflow-worker bash
-
-# Query the database from inside the container
-docker-compose exec airflow-worker sqlite3 /opt/airflow/data/fx_warehouse.sqlite "SELECT COUNT(*) FROM fact_fx_rates;"
-
-# Check task logs
-docker-compose exec airflow-worker find /opt/airflow/logs -name "*.log" | grep fx_pipeline
 ```
+env_file: - ${ENV_FILE_PATH:-.env}
+```
+This takes automatically your variables
 
 ### Azure Deployment Proposal
 
@@ -355,21 +298,6 @@ For production, this pipeline would run on Azure using:
 - **Azure Blob Storage** for raw data landing zone
 - **Azure Monitor** for logging and alerting
 
-## Key Design Decisions and Trade-offs
-
-| Decision | Reasoning |
-|----------|-----------|
-| EUR as single base currency | Reduces API calls from 2,555 to 365/year. All pairs derived mathematically. |
-| Long format fact table | Easy joins, scalable (new currency = new rows, no DDL change). Standard DWH practice. |
-| SQLite as fake DWH | Zero infrastructure, single-file deliverable. In production, use Azure SQL or Synapse. |
-| Pre-computed cross-pairs | Consumers don't need derivation logic. Simple lookups, no runtime calculations. |
-| `INSERT OR IGNORE` over `to_sql` | Prevents duplicates. `to_sql("append")` has no constraint awareness; `to_sql("replace")` destroys primary keys. |
-| Dimensions run once, outside DAG | `dim_currency` and `dim_date` are static. No need to reload daily. |
-| `catchup=False` | Backfill handled separately by `history_fx()`. Avoids 400+ DAG runs on first start. |
-| `logging` over `print` | Structured logs with timestamps and severity levels. Integrates with Airflow UI and monitoring systems. |
-| Composite primary keys | `(date, base_currency, target_currency)` enforces one rate per pair per day at the database level. |
-
-## Validating Outputs
 
 ### Check row counts
 

@@ -50,8 +50,11 @@ def transfrom():
 
         df_cross_pairs = pd.DataFrame(cross_pairs)
 
-        # Validation    
-        assert(float(df_cross_pairs.iloc[-1]['rate']) > 0, f"Rate should always be positif, got {float(df_cross_pairs.iloc[-1]['rate'])}" )
+        # Validation
+        assert (
+            float(df_cross_pairs.iloc[-1]["rate"]) > 0,
+            f"Rate should always be positif, got {float(df_cross_pairs.iloc[-1]['rate'])}",
+        )
 
         records = df_cross_pairs[
             ["date", "base_currency", "target_currency", "rate"]
@@ -111,8 +114,11 @@ def transfrom():
         # Append new data
         df_cross_pairs = pd.DataFrame(cross_pairs)
 
-        # Validation    
-        assert(float(df_cross_pairs.iloc[-1]['rate']) > 0, f"Rate should always be positif, got {float(df_cross_pairs.iloc[-1]['rate'])}" )
+        # Validation
+        assert (
+            float(df_cross_pairs.iloc[-1]["rate"]) > 0,
+            f"Rate should always be positif, got {float(df_cross_pairs.iloc[-1]['rate'])}",
+        )
 
         records = df_cross_pairs[
             ["date", "base_currency", "target_currency", "rate"]

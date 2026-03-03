@@ -38,4 +38,3 @@ jobs:
       - name: Lint SQL with SQLFluff
         run: |
           sqlfluff lint sql/ --dialect sqlite
-
