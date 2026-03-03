@@ -266,6 +266,8 @@ This takes automatically your variables
 
 ## Setup — Cloud Deployment (Azure)
 
+![alt text](image-2.png)
+
 ### Step 1: Create Resource Group
 
 In Azure Portal, create a resource group `<my_resource_group>`
