@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: './fx-functions'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './fx-function-app'
   PYTHON_VERSION: '3.12'
 
 jobs:
@@ -35,12 +35,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd fx-functions
+          cd fx-function-app
           pip install -r requirements.txt
 
       - name: Zip artifact for deployment
         run: |
-          cd fx-functions
+          cd fx-function-app
           zip -r ../release.zip . -x "*.git*"
 
       - name: Upload artifact for deployment job
