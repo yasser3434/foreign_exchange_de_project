@@ -124,14 +124,15 @@ pre-commit install
 docker-compose up -d
 ```
 
-Access the Airflow UI at `http://localhost:8080` (login: airflow / airflow).
+`http://localhost:8080` (login: airflow / airflow).
 
 
 ## Data Source
 
 **ExchangeRate-API** (https://www.exchangerate-api.com/)
 
-We use EUR as the single base currency and derive all cross-pairs mathematically. This reduces API calls from 7 × 365 = 2,555 to just 365 per year (one call per day).
+We use EUR as the single base currency and derive all cross-pairs mathematically. 
+This reduces API calls from to only 365 per year (one call per day).
 
 The derivation formula: `rate(A → B) = EUR_rate(B) / EUR_rate(A)`. Since both rates share EUR as the base.
 
@@ -334,14 +335,14 @@ Run the adapted `load_dim_tables`. Uses `MERGE ... WHEN NOT MATCHED` instead of 
 | SCM_DO_BUILD_DURING_DEPLOYMENT | true |
 
 
-### Step 7: Test the functions
+### Step 6: Test the functions
 
 ```bash
 curl -X POST "https://<function-app-name>.azurewebsites.net/api/extract?code=<key>"
 curl -X POST "https://<function-app-name>.azurewebsites.net/api/transform?code=<key>"
 ```
 
-### Step 8: Create Azure Data Factory
+### Step 7: Create Azure Data Factory
 1. Create a Data Factory resource 
 2. Create a pipeline `fx_daily_pipeline`
 4. Add two <Web> activities chained together : Extract and Transform
